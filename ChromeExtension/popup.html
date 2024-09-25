@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Whisper Transcription</title>
+  <style>
+    body {
+      width: 200px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+
+    button {
+      padding: 10px;
+      background-color: green;
+      color: white;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    button.recording {
+      background-color: red;
+    }
+
+    p {
+      font-size: 14px;
+      color: green;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Whisper</h1>
+  <button id="recordButton">Start Recording</button>
+  <p id="statusMessage">Recording...</p>
+
+  <script src="popup.js"></script>
+</body>
+</html>

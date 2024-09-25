@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 400px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        button.recording {
+            background-color: red;
+            color: white;
+        }
+
+        button:not(.recording) {
+            background-color: green;
+            color: white;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .copied {
+            color: green;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .toggle-container {
+            margin-bottom: 15px;
+        }
+
+        .toggle-container label {
+            font-size: 16px;
+        }
+
+        .toggle-container input[type="checkbox"] {
+            margin-left: 10px;
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech to Text Transcription</h1>
+
+        <div class="toggle-container">
+            <label for="useOpenAI">Use OpenAI API</label>
+            <input type="checkbox" id="useOpenAI">
+        </div>
+
+        <button id="recordButton">Start Recording</button>
+        <textarea id="transcriptionText" placeholder="Transcribed text will appear here..."></textarea>
+        <p id="copyStatus" class="copied">Text copied to clipboard!</p>
+    </div>
+
+    <script>
+        let recorder;
+        let audioBlob;
+        let isRecording = false;
+        const recordButton = document.getElementById('recordButton');
+        const transcriptionText = document.getElementById('transcriptionText');
+        const copyStatus = document.getElementById('copyStatus');
+        const useOpenAISwitch = document.getElementById('useOpenAI');
+        const OPENAI_API_KEY = 'secret'; // Replace with your OpenAI API key
+
+        async function startRecording() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            let audioChunks = [];
+
+            mediaRecorder.ondataavailable = function (event) {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = function () {
+                audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+
+                if (useOpenAISwitch.checked) {
+                    sendAudioToOpenAI(audioBlob);
+                } else {
+                    sendAudioToLocalBackend(audioBlob);
+                }
+            };
+
+            mediaRecorder.start();
+            recorder = mediaRecorder;
+        }
+
+        function stopRecording() {
+            recorder.stop();
+        }
+
+        recordButton.addEventListener('click', function () {
+            if (!isRecording) {
+                recordButton.textContent = 'Stop Recording';
+                recordButton.classList.add('recording');
+                startRecording();
+            } else {
+                recordButton.textContent = 'Start Recording';
+                recordButton.classList.remove('recording');
+                stopRecording();
+            }
+            isRecording = !isRecording;
+        });
+
+        async function sendAudioToLocalBackend(audioBlob) {
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'audio.wav');
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/transcribe/', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const transcription = result.transcription;
+
+                    transcriptionText.value = transcription;
+                    copyToClipboard(transcription);
+                    showCopyMessage();
+                } else {
+                    transcriptionText.value = 'Error transcribing audio.';
+                }
+            } catch (error) {
+                transcriptionText.value = 'Error: ' + error.message;
+            }
+        }
+
+        async function sendAudioToOpenAI(audioBlob) {
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'audio.wav');  // Send the file as 'file'
+            formData.append('model', 'whisper-1');  // Set the model parameter
+
+            try {
+                const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                    },
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const transcription = result.text;
+
+                    transcriptionText.value = transcription;
+                    copyToClipboard(transcription);
+                    showCopyMessage();
+                } else {
+                    transcriptionText.value = 'Error transcribing audio with OpenAI.';
+                }
+            } catch (error) {
+                transcriptionText.value = 'Error: ' + error.message;
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('Text copied to clipboard');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        function showCopyMessage() {
+            copyStatus.style.display = 'block';
+            setTimeout(() => {
+                copyStatus.style.display = 'none';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

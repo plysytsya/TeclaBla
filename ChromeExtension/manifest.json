@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Whisper Chrome Extension",
+  "version": "1.0",
+  "description": "Record audio and send it to OpenAI's Whisper API for transcription.",
+  "permissions": ["storage", "activeTab"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon48.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["welcome.html", "welcome.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
